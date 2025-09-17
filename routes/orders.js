@@ -1,11 +1,11 @@
 const express = require("express")
 const fetch = require("node-fetch")
 const cheerio = require("cheerio")
-const { GoogleGenerativeAI } = require("@google/genai")
+const { Client } = require("@google/genai")
 
 const router = express.Router()
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY
-const genAI = new GoogleGenerativeAI(GEMINI_API_KEY)
+const client = new Client({ apiKey: GEMINI_API_KEY })
 const SCRATCH_TOPIC_URL = "https://scratch.mit.edu/discuss/topic/838820/"
 
 const ORDER_FORM_REGEX = new RegExp(
@@ -40,15 +40,19 @@ function extractOrders(posts) {
   posts.forEach((post, idx) => {
     const match = ORDER_FORM_REGEX.exec(post)
     if (match) {
+      const username = match[1].trim()
+      const replies = posts
+        .slice(idx + 1)
+        .filter(p => p.includes(username) || p.includes(match[3].trim()))
       orders.push({
         post_index: idx + 4,
-        Username: match[1].trim(),
+        Username: username,
         ServiceRequired: match[2].trim(),
         Description: match[3].trim(),
         PreferredShop: match[4].trim(),
         AgreedToS: match[5].trim(),
         Other: match[6].trim(),
-        replies: posts.slice(idx + 1)
+        replies
       })
     }
   })
@@ -64,11 +68,15 @@ async function classifyOrder(order) {
     "work delivered, communication to external shops, or a status update that it is done.\n" +
     "It is UNCOMPLETED if there are no such replies or confirmation.\n\n" +
     `Order form:\nUsername: ${order.Username}\nService Required: ${order.ServiceRequired}\nDescription: ${order.Description}\nPreferred Shop: ${order.PreferredShop}\nOther: ${order.Other}\n\n` +
-    `Replies after this order:\n${repliesText}\n\n` +
+    `Replies referencing this order:\n${repliesText}\n\n` +
     "Respond only with COMPLETED or UNCOMPLETED."
-  const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash-preview" })
-  const resp = await model.generateContent(prompt)
-  const text = resp.response.text().trim().toUpperCase()
+
+  const response = await client.responses.create({
+    model: "gemini-2.5-preview",
+    input: prompt
+  })
+
+  const text = response.output[0].content[0].text.trim().toUpperCase()
   return text === "COMPLETED"
 }
 
