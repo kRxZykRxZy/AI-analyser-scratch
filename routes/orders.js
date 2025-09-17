@@ -1,5 +1,5 @@
 const express = require("express")
-const fetch = require("node-fetch")
+const axios = require("axios")
 const cheerio = require("cheerio")
 
 const router = express.Router()
@@ -21,12 +21,10 @@ async function fetchAllPosts() {
   let page = 1
   while (true) {
     const url = `${SCRATCH_TOPIC_URL}?page=${page}`
-    const res = await fetch(url, { headers: { "User-Agent": "Mozilla/5.0" } })
-    if (!res.ok) break
-    const html = await res.text()
-    const $ = cheerio.load(html)
+    const res = await axios.get(url, { headers: { "User-Agent": "Mozilla/5.0" } })
+    const $ = cheerio.load(res.data)
     const pagePosts = $(".postbody").map((i, el) => $(el).text().trim()).get()
-    if (pagePosts.length === 0) break
+    if (!pagePosts.length) break
     posts = posts.concat(pagePosts)
     page++
   }
@@ -71,24 +69,21 @@ async function classifyOrder(order) {
 
   const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`
 
-  const response = await fetch(url, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      prompt: prompt,
-      temperature: 0,
-      candidateCount: 1
-    })
+  const response = await axios.post(url, {
+    prompt: prompt,
+    temperature: 0,
+    candidateCount: 1
+  }, {
+    headers: { "Content-Type": "application/json" }
   })
 
-  const data = await response.json()
-  if (!data.candidates || !data.candidates[0] || !data.candidates[0].output) return false
-
-  const text = data.candidates[0].output[0].content[0].text.trim().toUpperCase()
+  const candidates = response.data?.candidates
+  if (!candidates || !candidates[0] || !candidates[0].output) return false
+  const text = candidates[0].output[0].content[0].text.trim().toUpperCase()
   return text === "COMPLETED"
 }
 
-router.get("/api/orders", async (req, res) => {
+router.get("/orders", async (req, res) => {
   try {
     const posts = await fetchAllPosts()
     const orders = extractOrders(posts)
