@@ -1,11 +1,9 @@
 const express = require("express")
 const fetch = require("node-fetch")
 const cheerio = require("cheerio")
-const { Client } = require("@google/genai")
 
 const router = express.Router()
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY
-const client = new Client({ apiKey: GEMINI_API_KEY })
 const SCRATCH_TOPIC_URL = "https://scratch.mit.edu/discuss/topic/838820/"
 
 const ORDER_FORM_REGEX = new RegExp(
@@ -71,12 +69,22 @@ async function classifyOrder(order) {
     `Replies referencing this order:\n${repliesText}\n\n` +
     "Respond only with COMPLETED or UNCOMPLETED."
 
-  const response = await client.responses.create({
-    model: "gemini-2.5-preview",
-    input: prompt
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`
+
+  const response = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      prompt: prompt,
+      temperature: 0,
+      candidateCount: 1
+    })
   })
 
-  const text = response.output[0].content[0].text.trim().toUpperCase()
+  const data = await response.json()
+  if (!data.candidates || !data.candidates[0] || !data.candidates[0].output) return false
+
+  const text = data.candidates[0].output[0].content[0].text.trim().toUpperCase()
   return text === "COMPLETED"
 }
 
