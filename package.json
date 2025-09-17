@@ -1,0 +1,19 @@
+{
+  "name": "scratch-orders-api",
+  "version": "1.0.0",
+  "description": "API to scrape Scratch forum orders and classify with Gemini",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "@google/generative-ai": "^0.0.1",
+    "cheerio": "^1.0.0-rc.12",
+    "express": "^4.18.2",
+    "node-fetch": "^3.3.2"
+  },
+  "type": "commonjs",
+  "author": "",
+  "license": "ISC"
+}
+ 
