@@ -1,7 +1,7 @@
 const express = require("express")
 const fetch = require("node-fetch")
 const cheerio = require("cheerio")
-const { GoogleGenerativeAI } = require("@google/generative-ai")
+const { GoogleGenerativeAI } = require("@google/genai")
 
 const router = express.Router()
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY
